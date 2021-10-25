@@ -1,0 +1,34 @@
+#
+# Makefile のターゲット依存部（MBED用）
+#
+
+# 
+# チップ依存部ディレクトリ名の定義 
+# 
+CHIPDIR = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
+
+#
+# コンパイルオプション
+#
+INCLUDES := $(INCLUDES) -I$(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
+COPTS := $(COPTS) -mlittle-endian -nostartfiles
+LDFLAGS := $(LDFLAGS) -mlittle-endian
+LIBS := $(LIBS)
+
+#
+# カーネルに関する定義
+#
+KERNEL_DIRS := $(KERNEL_DIRS) $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
+KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
+KERNEL_COBJS := $(KERNEL_COBJS)
+
+#
+# システムサービスに関する定義
+#
+SYSSVC_DIR := $(SYSSVC_DIR) $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
+SYSSVC_COBJS := $(SYSSVC_COBJS)
+
+#
+# コア依存部のインクルード
+#
+include $(SRCDIR)/arch/$(PRC)_$(TOOL)/common/Makefile.core
