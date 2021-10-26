@@ -416,7 +416,7 @@ $(OBJFILE): $(ALL_OBJS) $(LIBS_DEP)
 #
 lib$(OBJNAME).a: $(ALL_OBJS) $(LIBS_DEP)
 	rm -f lib$(OBJNAME).a
-	$(AR) -rcs lib$(OBJNAME).a $(START_OBJS) $(SYSSVC_OBJS) $(CFG_OBJS) \
+	$(AR) -rcs lib$(OBJNAME).a $(START_OBJS) $(APPL_OBJS) $(SYSSVC_OBJS) $(CFG_OBJS) \
 				$(KERNEL_LIB_OBJS) $(END_OBJS)
 	$(RANLIB) lib$(OBJNAME).a
 
@@ -463,6 +463,7 @@ clean:
 ifndef KERNEL_LIB
 	rm -f libkernel.a
 endif
+	rm -f lib$(OBJNAME).a
 
 .PHONY: cleankernel
 cleankernel:

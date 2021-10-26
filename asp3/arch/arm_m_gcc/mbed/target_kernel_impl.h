@@ -51,7 +51,11 @@
 /*
  * 割込み数（いいかげん）
  */
+#if __TARGET_ARCH_THUMB >= 4
 #define TMAX_INTNO (64 + 16)
+#else
+#define TMAX_INTNO (31 + 16)
+#endif /* __TARGET_ARCH_THUMB >= 4 */
 
 /*
  * 微少時間待ちのための定義（本来はSILのターゲット依存部）

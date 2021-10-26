@@ -1,0 +1,93 @@
+#
+# Makefile のターゲット依存部（MBED用）
+#
+
+#
+# ボード名, チップ名，コア名，開発環境名の定義
+#
+BOARD = mbed_m0_gcc
+CHIP  = mbed
+PRC   = arm_m
+TOOL  = gcc
+
+#
+# コアタイプ
+#
+CORE_TYPE = CORTEX_M0
+
+#
+# 使用するタイマ
+#
+#KERNEL_TIMER = SYSTICK
+KERNEL_TIMER = TIM
+
+#
+# コンパイルオプション
+#
+INCLUDES := $(INCLUDES) -I$(TARGETDIR)
+CDEFS := $(CDEFS)
+COPTS := $(COPTS) 
+LDFLAGS := -nostdlib -nostartfiles $(LDFLAGS)
+
+#
+# ファイルサイズ削減のためのオプション
+#
+COPTS   := $(COPTS) -ffunction-sections -fdata-sections
+OBJ_LDFLAGS := $(OBJ_LDFLAGS) -Wl,--gc-sections
+
+#
+# カーネルに関する定義
+#
+KERNEL_DIRS := $(KERNEL_DIRS) $(TARGETDIR)
+KERNEL_ASMOBJS := $(KERNEL_ASMOBJS)
+KERNEL_COBJS := $(KERNEL_COBJS)
+
+#
+# システムサービスに関する定義
+#
+SYSSVC_DIRS := $(SYSSVC_DIRS)
+SYSSVC_COBJS := $(SYSSVC_COBJS)
+
+#
+# 使用するタイマ
+#
+ifeq ($(KERNEL_TIMER), SYSTICK)
+CDEFS := $(CDEFS) -DUSE_SYSTICK_AS_TIMETICK
+KERNEL_COBJS := $(KERNEL_COBJS)
+else
+ifeq ($(KERNEL_TIMER), TIM)
+CDEFS := $(CDEFS) -DUSE_TIM_AS_HRT
+KERNEL_COBJS := $(KERNEL_COBJS)
+endif
+endif
+
+#
+# GNU開発環境のターゲットアーキテクチャの定義
+#
+GCC_TARGET = arm-none-eabi
+
+#
+# トレースログ記録のサンプルコードに関する定義
+#
+ifdef ENABLE_TRACE
+	COPTS := $(COPTS) -DTOPPERS_ENABLE_TRACE
+	SYSSVC_DIRS := $(SYSSVC_DIRS) $(SRCDIR)/arch/tracelog
+endif
+
+#
+# チップ依存部のインクルード
+#
+include $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)/Makefile.chip
+
+#
+# 依存関係の定義
+#
+cfg1_out.timestamp: $(CHIPDIR)/target_timer.cfg
+offset.timestamp: 
+kernel_cfg.timestamp: $(TARGETDIR)/target_kernel.trb
+check.timestamp: $(CHIPDIR)/target_check.trb
+
+#
+# リンカスクリプトの定義
+#
+LDSCRIPT = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)/mbed.ld

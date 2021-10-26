@@ -57,7 +57,9 @@
 /*
  * 割込み優先度のビット幅(core_sil.hで参照するためここで定義)
  */
+#if __TARGET_ARCH_THUMB >= 4
 #define TBITW_IPRI 2 /* MBED: さすがに2ビットはあるはず */
+#endif
 
 /*
  * プロセッサで共通な定義 

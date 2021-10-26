@@ -263,7 +263,25 @@ core_initialize(void)
 	set_exc_int_priority(EXCNO_PENDSV, INT_NVIC_PRI(-1));
 #endif /* __TARGET_ARCH_THUMB >= 4 */
 
-#if __TARGET_ARCH_THUMB >= 4
+#if __TARGET_ARCH_THUMB == 3
+	/* とりあえず全部の優先度の最上位ビットを立てておく */
+	for (int n = 0; n < 8; ++n) {
+		sil_wrw_mem((uint32_t *)(NVIC_PRI0 + 4 * n), 0x80808080);
+	}
+	/* デフォルトでは全ての割り込みが有効かつカーネル管理内であるとする */
+	for (int ipri = IIPM_ENAALL; ipri > IIPM_LOCK; --ipri) {
+		iipm_enable_masks[ipri] = 0xFFFFFFFF;
+	}
+	for (int ipri = IIPM_LOCK; ipri >= 0; --ipri) {
+		iipm_enable_masks[ipri] = 0;
+	}
+	/* CPU例外ハンドラを無理やり上書きする */
+	uint32_t mbed_vector_table = sil_rew_mem((uint32_t *)NVIC_VECTTBL);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_NMI * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_HARD * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_SVCALL * 4), (uint32_t)svc_handler);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_PENDSV * 4), (uint32_t)pendsv_handler);
+#else
 	/* とりあえず全部の優先度の最上位ビットを立てておく */
 	for (int n = 0; n < 124; ++n) {
 		sil_wrw_mem((uint32_t *)(NVIC_PRI0 + 4 * n), 0x80808080);

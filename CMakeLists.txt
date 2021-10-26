@@ -36,10 +36,6 @@ target_sources(${APP_TARGET}
         target_serial.cpp
         target_timer.cpp
         asp3/sample/sample1.cpp
-        asp3/library/log_output.c
-        asp3/library/strerror.c
-        asp3/library/t_perror.c
-        asp3/library/vasyslog.c
 )
 
 target_link_directories(${APP_TARGET}
@@ -51,6 +47,11 @@ target_link_libraries(${APP_TARGET}
     PRIVATE
         mbed-baremetal
         asp
+)
+
+target_compile_options(${APP_TARGET}
+    PRIVATE
+        -DTOPPERS_OMIT_TECS
 )
 
 mbed_set_post_build(${APP_TARGET})
