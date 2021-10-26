@@ -26,6 +26,7 @@ sample1.c は sample1.cpp にファイル形式が変更されており、Mbed�
 
 - LPC1768 (Cortex-M3)
 - NUCLEO_F401RE (Cortex-M4F)
+- NUCLEO_F429ZI (Cortex-M4F)
 - NUCLEO_L552ZE_Q (Cortex-M33, TrustZoneなし)
 
 ## 実装について
@@ -44,7 +45,8 @@ sample1.c は sample1.cpp にファイル形式が変更されており、Mbed�
 
 1. asp3/arch/arm_m_gcc/mbed/chip_sil.h のマクロ `TBITW_IPRI` をターゲットの割り込み優先度ビット幅に合わせて変更します。
 2. asp3/arch/arm_m_gcc/mbed/chip_kernel.h のマクロ `TMIN_INTPRI` をカーネル管理の割り込みがとり得る最高の割り込み優先度に設定します。
-3. `CFG_INT()` により割り込みの優先度を設定します。
+3. asp3/arch/arm_m_gcc/mbed/target_kernel_impl.h のマクロ `TMAX_INTNO` をターゲットの割り込み番号の最大値に合わせて変更します。
+4. `CFG_INT()` により割り込みの優先度を設定します。
 
 ### ASP3の割り込み出入口処理を使いたい場合
 
