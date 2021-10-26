@@ -62,24 +62,6 @@
 	ATHUMB(core_exc_entry)
 	AGLOBAL(core_exc_entry)
 ALABEL(core_exc_entry)
-	ATHUMB(NMI_Handler)
-	AGLOBAL(NMI_Handler)
-ALABEL(NMI_Handler)
-	ATHUMB(HardFault_Handler)
-	AGLOBAL(HardFault_Handler)
-ALABEL(HardFault_Handler)
-	ATHUMB(MemManage_Handler)
-	AGLOBAL(MemManage_Handler)
-ALABEL(MemManage_Handler)
-	ATHUMB(BusFault_Handler)
-	AGLOBAL(BusFault_Handler)
-ALABEL(BusFault_Handler)
-	ATHUMB(UsageFault_Handler)
-	AGLOBAL(UsageFault_Handler)
-ALABEL(UsageFault_Handler)
-	ATHUMB(DebugMon_Handler)
-	AGLOBAL(DebugMon_Handler)
-ALABEL(DebugMon_Handler)
 	/*
 	 *  例外/割込みが発生すると，発生時にアクティブなスタックにスクラ
 	 *  ッチレジスタ等が保存される．
@@ -202,9 +184,6 @@ ALABEL(core_exc_entry_3)
 	ATHUMB(pendsv_handler)
 	AGLOBAL(pendsv_handler)
 ALABEL(pendsv_handler)
-	ATHUMB(PendSV_Handler)
-	AGLOBAL(PendSV_Handler)
-ALABEL(PendSV_Handler)
 	/* カーネル管理の割り込みを禁止 */
 	ldr    r0, =NVIC_CLRENA0
 	ldr    r1, =#0xFFFFFFFF
@@ -320,9 +299,6 @@ ALABEL(return_to_thread)
 	ATHUMB(svc_handler)
 	AGLOBAL(svc_handler)
 ALABEL(svc_handler)
-	ATHUMB(SVC_Handler)
-	AGLOBAL(SVC_Handler)
-ALABEL(SVC_Handler)
 #ifdef LOG_DSP_LEAVE
 	mov    r0, r4
 	bl     log_dsp_leave

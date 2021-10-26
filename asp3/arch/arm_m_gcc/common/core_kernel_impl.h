@@ -651,11 +651,7 @@ extern void start_r(void);
  *  ベクトル番号inhnoの割込みハンドラの起動番地int_entryに設定する．割込み
  *  ハンドラテーブル
  */
-Inline void
-define_inh(INHNO inhno, FP int_entry)
-{
-
-}
+extern void define_inh(INHNO inhno, FP int_entry);
 
 /*
  *  割込みハンドラの出入口処理の生成マクロ

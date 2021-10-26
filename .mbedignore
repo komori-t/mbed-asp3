@@ -1,5 +1,0 @@
-asp3/*.c
-asp3/*.S
-asp3/*.o
-asp3/*.ld
-!asp3/obj/libasp3.a

@@ -147,9 +147,6 @@ ALABEL(core_exc_entry_2)
 	ATHUMB(pendsv_handler)
 	AGLOBAL(pendsv_handler)
 ALABEL(pendsv_handler)
-	ATHUMB(PendSV_Handler)
-	AGLOBAL(PendSV_Handler)
-ALABEL(PendSV_Handler)
 	/* カーネル管理の割り込みを禁止 */
 	mov    r0, #IIPM_LOCK
 	msr    basepri, r0
@@ -278,9 +275,6 @@ ALABEL(return_to_thread_fp)
 	ATHUMB(svc_handler)
 	AGLOBAL(svc_handler)
 ALABEL(svc_handler)
-	ATHUMB(SVC_Handler)
-	AGLOBAL(SVC_Handler)
-ALABEL(SVC_Handler)
 #ifdef LOG_DSP_LEAVE
 	mov    r0, r4
 	bl     log_dsp_leave

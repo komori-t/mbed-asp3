@@ -190,7 +190,8 @@ ifdef USE_CXX
 else
 	APPL_COBJS := @(APPLOBJS)
 endif
-APPL_COBJS := $(APPL_COBJS) log_output.o vasyslog.o t_perror.o strerror.o
+# APPL_COBJS := $(APPL_COBJS) log_output.o vasyslog.o t_perror.o strerror.o
+APPL_COBJS := log_output.o vasyslog.o t_perror.o strerror.o
 APPL_CFLAGS := $(APPL_CFLAGS)
 ifdef APPLDIRS
 	INCLUDES := $(INCLUDES) $(foreach dir,$(APPLDIRS),-I$(dir))
@@ -415,7 +416,7 @@ $(OBJFILE): $(ALL_OBJS) $(LIBS_DEP)
 #
 lib$(OBJNAME).a: $(ALL_OBJS) $(LIBS_DEP)
 	rm -f lib$(OBJNAME).a
-	$(AR) -rcs lib$(OBJNAME).a $(START_OBJS) $(APPL_OBJS) $(SYSSVC_OBJS) $(CFG_OBJS) \
+	$(AR) -rcs lib$(OBJNAME).a $(START_OBJS) $(SYSSVC_OBJS) $(CFG_OBJS) \
 				$(KERNEL_LIB_OBJS) $(END_OBJS)
 	$(RANLIB) lib$(OBJNAME).a
 

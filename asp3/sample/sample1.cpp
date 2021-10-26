@@ -108,6 +108,9 @@
  *  'q' : 発行したシステムコールを表示しない．
  */
 
+#include "mbed.h"
+
+extern "C" {
 #include <kernel.h>
 #include <t_syslog.h>
 #include <t_stdlib.h>
@@ -115,6 +118,9 @@
 #include "syssvc/syslog.h"
 #include "kernel_cfg.h"
 #include "sample1.h"
+}
+
+static DigitalOut led(LED1);
 
 /*
  *  サービスコールのエラーのログ出力
@@ -172,6 +178,7 @@ task(intptr_t exinf)
 		syslog(LOG_NOTICE, "task%d is running (%03d).   %s",
 										tskno, ++n, graph[tskno-1]);
 		consume_time(task_loop);
+		led = ! led;
 		c = message[tskno-1];
 		message[tskno-1] = 0;
 		switch (c) {
@@ -179,6 +186,7 @@ task(intptr_t exinf)
 			syslog(LOG_INFO, "#%d#ext_tsk()", tskno);
 			SVC_PERROR(ext_tsk());
 			assert(0);
+			break;
 		case 's':
 			syslog(LOG_INFO, "#%d#slp_tsk()", tskno);
 			SVC_PERROR(slp_tsk());

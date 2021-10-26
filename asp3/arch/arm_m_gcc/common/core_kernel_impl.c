@@ -270,13 +270,16 @@ core_initialize(void)
 	}
 	/* CPU例外ハンドラを無理やり上書きする */
 	uint32_t mbed_vector_table = sil_rew_mem((uint32_t *)NVIC_VECTTBL);
-	sil_wrw_mem((uint32_t *)(mbed_vector_table + 2 * 4), (uint32_t)core_exc_entry); /* NMI */
-	sil_wrw_mem((uint32_t *)(mbed_vector_table + 3 * 4), (uint32_t)core_exc_entry); /* HardFault */
-	sil_wrw_mem((uint32_t *)(mbed_vector_table + 5 * 4), (uint32_t)core_exc_entry); /* BusFault */
-	sil_wrw_mem((uint32_t *)(mbed_vector_table + 6 * 4), (uint32_t)core_exc_entry); /* UsageFault */
-	sil_wrw_mem((uint32_t *)(mbed_vector_table + 12 * 4), (uint32_t)core_exc_entry); /* DebugMon */
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_NMI * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_HARD * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_MPU * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_BUS * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_USAGE * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_DEBUG * 4), (uint32_t)core_exc_entry);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_SVCALL * 4), (uint32_t)svc_handler);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_PENDSV * 4), (uint32_t)pendsv_handler);
 #ifdef TOPPERS_ENABLE_TRUSTZONE
-	sil_wrw_mem((uint32_t *)(mbed_vector_table + 7 * 4), (uint32_t)core_exc_entry); /* SecureFault */
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + EXCNO_SECURE * 4), (uint32_t)core_exc_entry);
 #endif /* TOPPERS_ENABLE_TRUSTZONE */
 #endif /* __TARGET_ARCH_THUMB >= 4 */
 }
@@ -329,6 +332,19 @@ config_int(INTNO intno, ATR intatr, PRI intpri)
 	if ((intatr & TA_ENAINT) != 0U) {
 		(void)enable_int(intno);
 	}
+}
+
+/*
+ *  割込みハンドラの設定
+ *
+ *  ベクトル番号inhnoの割込みハンドラの起動番地int_entryに設定する．割込み
+ *  ハンドラテーブル
+ */
+void define_inh(INHNO inhno, FP int_entry)
+{
+	/* 割り込みベクタをcore_int_entryに上書きする */
+	uint32_t mbed_vector_table = sil_rew_mem((uint32_t *)NVIC_VECTTBL);
+	sil_wrw_mem((uint32_t *)(mbed_vector_table + inhno * 4), (uint32_t)core_int_entry);
 }
 
 /*

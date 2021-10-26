@@ -27,7 +27,7 @@ void target_exit(void)
 {
     /* チップ依存部の終了処理 */
     core_terminate();
-    mbed_die();
+    while (1) __asm__ volatile ("wfi");
 }
 
 /*
