@@ -37,7 +37,7 @@
  *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
  *  の責任を負わない．
  * 
- *  $Id: startup.c 1136 2018-12-31 16:32:45Z ertl-hiro $
+ *  $Id: startup.c 1134 2018-12-31 16:15:10Z ertl-hiro $
  */
 
 /*
@@ -78,6 +78,11 @@
 bool_t	kerflg = false;
 
 /*
+ *  カーネルメモリプール領域有効フラグ
+ */
+bool_t	mpk_valid;
+
+/*
  *  カーネルの起動
  */
 void
@@ -103,6 +108,12 @@ sta_ker(void)
 	 *  タイムイベント管理モジュールは他のモジュールより先に初期化
 	 *  する必要がある．
 	 */
+	if (mpk != NULL) {
+		mpk_valid = initialize_mempool(mpk, mpksz);
+	}
+	else {
+		mpk_valid = false;
+	}
 	initialize_tmevt();								/*［ASPD1061］*/
 	initialize_object();
 
@@ -116,8 +127,14 @@ sta_ker(void)
 	/*
 	 *  高分解能タイマの設定
 	 */
-	current_hrtcnt = target_hrt_get_current();		/*［ASPD1063］*/
-	set_hrt_event();								/*［ASPD1064］*/
+	/*
+	 * Mbed: この時点では libc の初期化処理が終わっていないため Mbed の
+	 * タイマオブジェクトも初期化されておらず、タイマを呼び出すことはできない。
+	 * これらの処理はプロキシタスクの起動時に行う。
+	 */
+	// current_hrtcnt = target_hrt_get_current();		/*［ASPD1063］*/
+	// set_hrt_event();								/*［ASPD1064］*/
+	current_hrtcnt = 0;
 
 	/*
 	 *  カーネル動作の開始
@@ -191,3 +208,66 @@ exit_kernel(void)
 }
 
 #endif /* TOPPERS_ext_ker */
+
+/*
+ *  デフォルトのメモリプール管理機能
+ *
+ *  メモリプール領域の先頭から順に割り当てを行い，すべてのメモリ領域が
+ *  解放されるまで解放されたメモリ領域を再利用しないメモリプール管理機
+ *  能．
+ */
+#ifdef TOPPERS_kermem
+#ifndef OMIT_MEMPOOL_DEFAULT
+
+typedef struct {
+	void	*brk;		/* メモリプール領域の未使用領域の先頭番地 */
+	void	*limit;		/* メモリプール領域の上限 */
+	uint_t	count;		/* 割り当てたメモリ領域の数 */
+} MEMPOOLCB;
+
+bool_t
+initialize_mempool(MB_T *mempool, size_t size)
+{
+	MEMPOOLCB	*p_mempoolcb = ((MEMPOOLCB *) mempool);
+
+	if (size >= sizeof(MEMPOOLCB)) {
+		p_mempoolcb->brk = ((char *) mempool) + sizeof(MEMPOOLCB);
+		p_mempoolcb->limit = ((char *) mempool) + size;
+		p_mempoolcb->count = 0;
+		return(true);
+	}
+	else {
+		return(false);
+	}
+}
+
+void *
+malloc_mempool(MB_T *mempool, size_t size)
+{
+	MEMPOOLCB	*p_mempoolcb = ((MEMPOOLCB *) mempool);
+	void		*brk;
+
+	brk = ((MEMPOOLCB *) mempool)->brk;
+	if (((char *)(p_mempoolcb->limit)) - ((char *) brk) >= size) {
+		p_mempoolcb->brk = ((char *) brk) + size;
+		p_mempoolcb->count += 1;
+		return(brk);
+	}
+	else {
+		return(NULL);
+	}
+}
+
+void
+free_mempool(MB_T *mempool, void *ptr)
+{
+	MEMPOOLCB	*p_mempoolcb = ((MEMPOOLCB *) mempool);
+
+	p_mempoolcb->count -= 1;
+	if (p_mempoolcb->count == 0) {
+		p_mempoolcb->brk = ((char *) mempool) + sizeof(MEMPOOLCB);
+	}
+}
+
+#endif /* OMIT_MEMPOOL_DEFAULT */
+#endif /* TOPPERS_kermem */

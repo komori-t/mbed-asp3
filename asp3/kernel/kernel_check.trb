@@ -304,6 +304,24 @@ $cfgData[:CRE_ALM].sort.each do |key, params|
 end
 
 #
+#  割込みサービスルーチンに関するチェック
+#
+isrinib = SYMBOL("_kernel_isrinib_table")
+$cfgData[:CRE_ISR].sort.each do |_, params|
+  isr = PEEK(isrinib + $offsetof_ISRINIB_isr, $sizeof_ISR)
+
+  # isrがプログラムの先頭番地として正しくない場合［NGKI3004］
+  if (isr & ($CHECK_FUNC_ALIGN - 1)) != 0
+    error_wrong_id("E_PAR", params, :isr, :isrid, "not aligned")
+  end
+  if $CHECK_FUNC_NONNULL && isr == 0
+    error_wrong_id("E_PAR", params, :isr, :isrid, "null")
+  end
+
+  isrinib += $sizeof_ISRINIB
+end
+
+#
 #  非タスクコンテキスト用のスタック領域に関するチェック
 #
 if $cfgData[:DEF_ICS].size > 0
@@ -316,6 +334,22 @@ if $cfgData[:DEF_ICS].size > 0
   end
   if $CHECK_STACK_NONNULL && istk == 0
     error_wrong("E_PAR", params0, :istk, "null")
+  end
+end
+
+#
+#  カーネルメモリプール領域に関するチェック
+#
+if $cfgData[:DEF_MPK].size > 0
+  params0 = $cfgData[:DEF_MPK][1]
+  mpk = PEEK(SYMBOL("_kernel_mpk"), $sizeof_void_ptr)
+
+  # mpkがターゲット定義の制約に合致しない場合（E_PAR）［NGKI5083］
+  if (mpk & ($CHECK_MPK_ALIGN - 1)) != 0
+    error_wrong("E_PAR", params0, :mpk, "not aligned")
+  end
+  if $CHECK_MPK_NONNULL && mpk == 0
+    error_wrong("E_PAR", params0, :mpk, "null")
   end
 end
 

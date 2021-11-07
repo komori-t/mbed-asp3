@@ -124,6 +124,7 @@
 #define TMIN_MPFID		1		/* 固定長メモリプールIDの最小値 */
 #define TMIN_CYCID		1		/* 周期通知IDの最小値 */
 #define TMIN_ALMID		1		/* アラーム通知IDの最小値 */
+#define TMIN_ISRID		1		/* 割込みサービスルーチンIDの最小値 */
 
 /*
  *  優先度の段階数の定義
@@ -131,6 +132,33 @@
 #define TNUM_TPRI		(TMAX_TPRI - TMIN_TPRI + 1)
 #define TNUM_DPRI		(TMAX_DPRI - TMIN_DPRI + 1)
 #define TNUM_INTPRI		(TMAX_INTPRI - TMIN_INTPRI + 1)
+
+/*
+ *  カーネル内部で使用する属性の定義
+ */
+#define TA_NOEXS		((ATR)(-1))			/* 未登録状態 */
+
+#ifndef TA_MEMALLOC
+#define TA_MEMALLOC		UINT_C(0x8000)		/* メモリ領域をカーネルで確保 */
+#endif /* TA_MEMALLOC */
+#ifndef TA_MBALLOC
+#define TA_MBALLOC		UINT_C(0x4000)		/* 管理領域をカーネルで確保 */
+#endif /* TA_MBALLOC */
+
+/*
+ *  ターゲット定義のエラーチェックマクロのデフォルト値の定義
+ */
+#ifndef TARGET_TSKATR
+#define TARGET_TSKATR		0U		/* ターゲット定義のタスク属性 */
+#endif /* TARGET_TSKATR */
+
+#ifndef TARGET_ISRATR
+#define TARGET_ISRATR		0U		/* ターゲット定義のISR属性 */
+#endif /* TARGET_ISRATR */
+
+#ifndef TARGET_MIN_STKSZ			/* タスクのスタックサイズの最小値 */
+#define TARGET_MIN_STKSZ	1U		/* 未定義の場合は0でないことをチェック */
+#endif /* TARGET_MIN_STKSZ */
 
 /*
  *  ヘッダファイルを持たないモジュールの関数・変数の宣言
@@ -181,9 +209,20 @@ extern STK_T *const	istkpt;		/* スタックポインタの初期値 */
 #endif /* TOPPERS_ISTKPT */
 
 /*
+ *  カーネルメモリプール領域（kernel_cfg.c）
+ */
+extern const size_t	mpksz;		/* カーネルメモリプール領域のサイズ */
+extern MB_T *const	mpk;		/* カーネルメモリプール領域の先頭番地 */
+
+/*
  *  カーネル動作状態フラグ（startup.c）
  */
 extern bool_t	kerflg;
+
+/*
+ *  カーネルメモリプール領域有効フラグ（startup.c）
+ */
+extern bool_t	mpk_valid;
 
 /*
  *  カーネルの起動（startup.c）
@@ -196,9 +235,48 @@ extern void	sta_ker(void);
 extern void	exit_kernel(void);
 
 /*
+ *  メモリプール領域の管理（startup.c）
+ */
+extern bool_t initialize_mempool(MB_T *mempool, size_t size);
+extern void *malloc_mempool(MB_T *mempool, size_t size);
+extern void free_mempool(MB_T *mempool, void *ptr);
+
+/*
+ *  カーネルメモリプール領域からのメモリ獲得／解放
+ */
+Inline void *
+malloc_mpk(size_t size)
+{
+	if (mpk_valid) {
+		return(malloc_mempool(mpk, size));
+	}
+	else {
+		return(NULL);
+	}
+}
+
+Inline void
+free_mpk(void *ptr)
+{
+	if (mpk_valid) {
+		free_mempool(mpk, ptr);
+	}
+}
+
+/*
  *  通知ハンドラの型定義
  */
 typedef void	(*NFYHDR)(intptr_t exinf);
+
+/*
+ *  通知方法のエラーチェック（time_manage.c）
+ */
+extern ER check_nfyinfo(const T_NFYINFO *p_nfyinfo);
+
+/*
+ *  通知ハンドラ（time_manage.c）
+ */
+extern void notify_handler(intptr_t exinf);
 
 #endif /* TOPPERS_MACRO_ONLY */
 #endif /* TOPPERS_KERNEL_IMPL_H */

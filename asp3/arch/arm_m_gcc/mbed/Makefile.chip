@@ -10,7 +10,7 @@ CHIPDIR = $(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
 #
 # コンパイルオプション
 #
-INCLUDES := $(INCLUDES) -I$(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP)
+INCLUDES := $(INCLUDES) -I$(SRCDIR)/arch/$(PRC)_$(TOOL)/$(CHIP) -I$(SRCDIR)/../rtos-bridge
 COPTS := $(COPTS) -mlittle-endian -nostartfiles
 LDFLAGS := $(LDFLAGS) -mlittle-endian
 LIBS := $(LIBS)

@@ -104,12 +104,22 @@ class KernelObject
     @obj_s = obj_s
     @OBJ_S = obj_s.tr("a-z", "A-Z")
     @objid = (obj + "id").to_sym
+    @noobj = ("no" + obj).to_sym
     @api = "CRE_#{@OBJ}".to_sym
+    @aidapi = "AID_#{@OBJ}".to_sym
+    @inibList = { "#{@OBJ_S}INIB" => "a#{@obj_s}inib_table"}
   end
 
   def generate()
+    # AID_@OBJの処理
+    numAutoObjid = 0
+    $cfgData[@aidapi].each do |_, params|
+      numAutoObjid += params[@noobj]
+    end
+    numObjid = $cfgData[@api].size + numAutoObjid
+
     # kernel_cfg.hの生成
-    $kernelCfgH.add("#define TNUM_#{@OBJ}ID\t#{$cfgData[@api].size}")
+    $kernelCfgH.add("#define TNUM_#{@OBJ}ID\t#{numObjid}")
 
     # オブジェクトのID番号のマクロ定義の生成
     $cfgData[@api].sort.each do |_, params|
@@ -126,9 +136,14 @@ class KernelObject
       $kernelCfgC.add()
     end
 
+    # 静的に生成されたオブジェクトの数
+    $kernelCfgC.add("#define TNUM_S#{@OBJ}ID\t#{$cfgData[@api].size}")
+
     # オブジェクトID番号の最大値
-    $kernelCfgC.add2("const ID _kernel_tmax_#{@obj}id" \
+    $kernelCfgC.add("const ID _kernel_tmax_#{@obj}id" \
 							" = (TMIN_#{@OBJ}ID + TNUM_#{@OBJ}ID - 1);")
+    $kernelCfgC.add2("const ID _kernel_tmax_s#{@obj}id" \
+							" = (TMIN_#{@OBJ}ID + TNUM_S#{@OBJ}ID - 1);")
 
     # データ構造
     if $cfgData[@api].size > 0
@@ -144,14 +159,28 @@ class KernelObject
 
       # オブジェクト初期化ブロックの生成
       $kernelCfgC.add("const #{@OBJ_S}INIB _kernel_#{@obj_s}inib_table" \
-													"[TNUM_#{@OBJ}ID] = {")
+													"[TNUM_S#{@OBJ}ID] = {")
       $cfgData[@api].sort.each_with_index do |(key, params), index|
         $kernelCfgC.add(",") if index > 0
         $kernelCfgC.append("\t{ " + generateInib(key, params) + " }")
       end
       $kernelCfgC.add
       $kernelCfgC.add2("};")
+    else
+      $kernelCfgC.add2("TOPPERS_EMPTY_LABEL(const #{@OBJ_S}INIB, " \
+										"_kernel_#{@obj_s}inib_table);")
+    end
 
+    # 動的生成オブジェクト用のオブジェクト初期化ブロック
+    @inibList.each do |type, array|
+      if numAutoObjid > 0
+        $kernelCfgC.add2("#{type} _kernel_#{array}[#{numAutoObjid}];")
+      else
+        $kernelCfgC.add2("TOPPERS_EMPTY_LABEL(#{type}, _kernel_#{array});")
+      end
+    end
+
+    if numObjid > 0
       # オブジェクト管理ブロックの生成
       $kernelCfgC.add2("#{@OBJ_S}CB _kernel_#{@obj_s}cb_table" \
 													"[TNUM_#{@OBJ}ID];")
@@ -159,9 +188,6 @@ class KernelObject
       # オブジェクト初期化関数の追加
       $initializeFunctions.push("_kernel_initialize_#{@object}();")
     else
-      # オブジェクトが1つもない場合
-      $kernelCfgC.add("TOPPERS_EMPTY_LABEL(const #{@OBJ_S}INIB, " \
-										"_kernel_#{@obj_s}inib_table);")
       $kernelCfgC.add2("TOPPERS_EMPTY_LABEL(#{@OBJ_S}CB, " \
 										"_kernel_#{@obj_s}cb_table);")
     end
@@ -382,6 +408,54 @@ STK_T *const _kernel_istk = #{istk};
 #ifdef TOPPERS_ISTKPT
 STK_T *const _kernel_istkpt = TOPPERS_ISTKPT(#{istk}, #{istksz});
 #endif /* TOPPERS_ISTKPT */
+EOS
+
+#
+#  カーネルメモリプール領域
+#
+$kernelCfgC.comment_header("Kernel Memory Pool Area")
+
+if $cfgData[:DEF_MPK].size == 0
+  # DEF_MPKがない場合のデフォルト値の設定
+  mpksz = "0"
+  mpk = "NULL"
+else
+  # 静的API「DEF_MPK」が複数ある（E_OBJ）［NGKI5073］
+  if ($cfgData[:DEF_MPK].size > 1)
+    error("E_OBJ: too many DEF_MPK")
+  end
+
+  # DEF_MPKがある場合の処理
+  params0 = $cfgData[:DEF_MPK][1]
+
+  # パラメータが省略された時のデフォルト値の設定
+  params0[:mpk] ||= "NULL"
+
+  # mpkszが0の場合（E_PAR）［NGKI5071］
+  if params0[:mpksz] == 0
+    error_wrong("E_PAR", params0, :mpksz, "zero")
+  end
+
+  if params0[:mpk] == "NULL"
+    # カーネルメモリプール領域の自動割付け
+    $kernelCfgC.add("static MB_T _kernel_memory_pool" \
+					"[COUNT_MB_T(#{params0[:mpksz]})];")
+    mpksz = "ROUND_MB_T(#{params0[:mpksz]})"
+    mpk = "_kernel_memory_pool"
+  else
+    # mpkszがターゲット定義の制約に合致しない場合（E_PAR）［NGKI5083］
+    if (params0[:mpksz] & ($CHECK_MB_ALIGN - 1)) != 0
+      error_wrong("E_PAR", params0, :mpksz, "not aligned")
+    end
+
+    mpksz = "(#{params0[:mpksz]})"
+    mpk = "(void *)(#{params0[:mpk]})"
+  end
+end
+
+$kernelCfgC.add(<<EOS)
+const size_t _kernel_mpksz = #{mpksz};
+MB_T *const _kernel_mpk = #{mpk};
 EOS
 
 #

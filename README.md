@@ -63,10 +63,14 @@ ASP3の割り込み出入口処理を使う場合は、以下の手順を踏み�
   - `define_inh()`で指定された番号の割り込みに対して、`VTOR`レジスタが指す割り込みベクタに`core_int_entry()`を代入するよう変更
 - core_kernel_impl.h
   - `define_inh()`をインライン関数からプロトタイプ宣言に変更
+  - `init_tskinictxb` と `term_tskinictxb` を追加
 - core_kernel.trb
   - ベクタテーブルのセクション指定を削除（おそらく不要だが一応）
 - core_kernel_v6m.trb
   - ベクタテーブルのセクション指定を削除（おそらく不要だが一応）
+- startup.c
+  - `current_hrtcnt` の初期値を 0 に固定
+  - `set_hrt_event()` の呼び出しを削除
 - sample/Makefile
   - `APPL_COBJS` から `@(APPLOBJS)` を除外（mbed側でlog_output.c等をビルドさせても良いが、なぜかARMv6-Mではコンパイルエラーが発生した）
   - all のターゲットを lib$(OBJNAME).a に変更

@@ -88,128 +88,133 @@ ref_tsk(ID tskid, T_RTSK *pk_rtsk)
 	}
 
 	lock_cpu();
-	tstat = p_tcb->tstat;
-	if (TSTAT_DORMANT(tstat)) {
-		/*
- 		 *  対象タスクが休止状態の場合［NGKI1225］
-		 */
-		pk_rtsk->tskstat = TTS_DMT;
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1221］*/
 	}
 	else {
-		/*
- 		 *  タスク状態の取出し［NGKI1225］
-		 */
-		if (TSTAT_SUSPENDED(tstat)) {
-			if (TSTAT_WAITING(tstat)) {
-				pk_rtsk->tskstat = TTS_WAS;
-			}
-			else {
-				pk_rtsk->tskstat = TTS_SUS;
-			}
-		}
-		else if (TSTAT_WAITING(tstat)) {
-			pk_rtsk->tskstat = TTS_WAI;
-		}
-		else if (p_tcb == p_runtsk) {
-			pk_rtsk->tskstat = TTS_RUN;
+		tstat = p_tcb->tstat;
+		if (TSTAT_DORMANT(tstat)) {
+			/*
+	 		 *  対象タスクが休止状態の場合［NGKI1225］
+			 */
+			pk_rtsk->tskstat = TTS_DMT;
 		}
 		else {
-			pk_rtsk->tskstat = TTS_RDY;
-		}
-
-		/*
- 		 *  現在優先度とベース優先度の取出し［NGKI1227］
-		 */
-		pk_rtsk->tskpri = EXT_TSKPRI(p_tcb->priority);
-		pk_rtsk->tskbpri = EXT_TSKPRI(p_tcb->bpriority);
-
-		if (TSTAT_WAITING(tstat)) {
 			/*
-	 		 *  待ち要因と待ち対象のオブジェクトのIDの取出し［NGKI1229］
-	 		 *  ［NGKI1231］
+	 		 *  タスク状態の取出し［NGKI1225］
 			 */
-			switch (tstat & TS_WAITING_MASK) {
-			case TS_WAITING_SLP:
-				pk_rtsk->tskwait = TTW_SLP;
-				break;
-			case TS_WAITING_DLY:
-				pk_rtsk->tskwait = TTW_DLY;
-				break;
-			case TS_WAITING_SEM:
-				pk_rtsk->tskwait = TTW_SEM;
-				pk_rtsk->wobjid = SEMID(((WINFO_SEM *)(p_tcb->p_winfo))
-																->p_semcb);
-				break;
-			case TS_WAITING_FLG:
-				pk_rtsk->tskwait = TTW_FLG;
-				pk_rtsk->wobjid = FLGID(((WINFO_FLG *)(p_tcb->p_winfo))
-																->p_flgcb);
-				break;
-			case TS_WAITING_SDTQ:
-				pk_rtsk->tskwait = TTW_SDTQ;
-				pk_rtsk->wobjid = DTQID(((WINFO_SDTQ *)(p_tcb->p_winfo))
-																->p_dtqcb);
-				break;
-			case TS_WAITING_RDTQ:
-				pk_rtsk->tskwait = TTW_RDTQ;
-				pk_rtsk->wobjid = DTQID(((WINFO_RDTQ *)(p_tcb->p_winfo))
-																->p_dtqcb);
-				break;
-			case TS_WAITING_SPDQ:
-				pk_rtsk->tskwait = TTW_SPDQ;
-				pk_rtsk->wobjid = PDQID(((WINFO_SPDQ *)(p_tcb->p_winfo))
-																->p_pdqcb);
-				break;
-			case TS_WAITING_RPDQ:
-				pk_rtsk->tskwait = TTW_RPDQ;
-				pk_rtsk->wobjid = PDQID(((WINFO_RPDQ *)(p_tcb->p_winfo))
-																->p_pdqcb);
-				break;
-			case TS_WAITING_MTX:
-				pk_rtsk->tskwait = TTW_MTX;
-				pk_rtsk->wobjid = MTXID(((WINFO_MTX *)(p_tcb->p_winfo))
-																->p_mtxcb);
-				break;
-			case TS_WAITING_MPF:
-				pk_rtsk->tskwait = TTW_MPF;
-				pk_rtsk->wobjid = MPFID(((WINFO_MPF *)(p_tcb->p_winfo))
-																->p_mpfcb);
-				break;
+			if (TSTAT_SUSPENDED(tstat)) {
+				if (TSTAT_WAITING(tstat)) {
+					pk_rtsk->tskstat = TTS_WAS;
+				}
+				else {
+					pk_rtsk->tskstat = TTS_SUS;
+				}
 			}
-
-			/*
-	 		 *  タイムアウトするまでの時間の取出し
-			 */
-			if (p_tcb->p_winfo->p_tmevtb != NULL) {
-				pk_rtsk->lefttmo				/*［NGKI1233］［NGKI1235］*/
-						= (TMO) tmevt_lefttim(p_tcb->p_winfo->p_tmevtb);
+			else if (TSTAT_WAITING(tstat)) {
+				pk_rtsk->tskstat = TTS_WAI;
+			}
+			else if (p_tcb == p_runtsk) {
+				pk_rtsk->tskstat = TTS_RUN;
 			}
 			else {
-				pk_rtsk->lefttmo = TMO_FEVR;	/*［NGKI1234］*/
+				pk_rtsk->tskstat = TTS_RDY;
 			}
+
+			/*
+	 		 *  現在優先度とベース優先度の取出し［NGKI1227］
+			 */
+			pk_rtsk->tskpri = EXT_TSKPRI(p_tcb->priority);
+			pk_rtsk->tskbpri = EXT_TSKPRI(p_tcb->bpriority);
+
+			if (TSTAT_WAITING(tstat)) {
+				/*
+		 		 *  待ち要因と待ち対象のオブジェクトのIDの取出し［NGKI1229］
+				 *  ［NGKI1231］
+				 */
+				switch (tstat & TS_WAITING_MASK) {
+				case TS_WAITING_SLP:
+					pk_rtsk->tskwait = TTW_SLP;
+					break;
+				case TS_WAITING_DLY:
+					pk_rtsk->tskwait = TTW_DLY;
+					break;
+				case TS_WAITING_SEM:
+					pk_rtsk->tskwait = TTW_SEM;
+					pk_rtsk->wobjid = SEMID(((WINFO_SEM *)(p_tcb->p_winfo))
+																->p_semcb);
+					break;
+				case TS_WAITING_FLG:
+					pk_rtsk->tskwait = TTW_FLG;
+					pk_rtsk->wobjid = FLGID(((WINFO_FLG *)(p_tcb->p_winfo))
+																->p_flgcb);
+					break;
+				case TS_WAITING_SDTQ:
+					pk_rtsk->tskwait = TTW_SDTQ;
+					pk_rtsk->wobjid = DTQID(((WINFO_SDTQ *)(p_tcb->p_winfo))
+																->p_dtqcb);
+					break;
+				case TS_WAITING_RDTQ:
+					pk_rtsk->tskwait = TTW_RDTQ;
+					pk_rtsk->wobjid = DTQID(((WINFO_RDTQ *)(p_tcb->p_winfo))
+																->p_dtqcb);
+					break;
+				case TS_WAITING_SPDQ:
+					pk_rtsk->tskwait = TTW_SPDQ;
+					pk_rtsk->wobjid = PDQID(((WINFO_SPDQ *)(p_tcb->p_winfo))
+																->p_pdqcb);
+					break;
+				case TS_WAITING_RPDQ:
+					pk_rtsk->tskwait = TTW_RPDQ;
+					pk_rtsk->wobjid = PDQID(((WINFO_RPDQ *)(p_tcb->p_winfo))
+																->p_pdqcb);
+					break;
+				case TS_WAITING_MTX:
+					pk_rtsk->tskwait = TTW_MTX;
+					pk_rtsk->wobjid = MTXID(((WINFO_MTX *)(p_tcb->p_winfo))
+																->p_mtxcb);
+					break;
+				case TS_WAITING_MPF:
+					pk_rtsk->tskwait = TTW_MPF;
+					pk_rtsk->wobjid = MPFID(((WINFO_MPF *)(p_tcb->p_winfo))
+																->p_mpfcb);
+					break;
+				}
+
+				/*
+		 		 *  タイムアウトするまでの時間の取出し
+				 */
+				if (p_tcb->p_winfo->p_tmevtb != NULL) {
+					pk_rtsk->lefttmo			/*［NGKI1233］［NGKI1235］*/
+							= (TMO) tmevt_lefttim(p_tcb->p_winfo->p_tmevtb);
+				}
+				else {
+					pk_rtsk->lefttmo = TMO_FEVR;	/*［NGKI1234］*/
+				}
+			}
+
+			/*
+	 		 *  起床要求キューイング数の取出し［NGKI1239］
+			 */
+			pk_rtsk->wupcnt = p_tcb->wupque ? 1U : 0U;
+
+			/*
+			 *  タスク終了要求状態の取出し［NGKI3467］
+			 */
+			pk_rtsk->raster = p_tcb->raster;
+
+			/*
+			 *  タスク終了禁止状態の取出し［NGKI3468］
+			 */
+			pk_rtsk->dister = !(p_tcb->enater);
 		}
 
 		/*
- 		 *  起床要求キューイング数の取出し［NGKI1239］
+		 *  起動要求キューイング数の取出し［NGKI1238］
 		 */
-		pk_rtsk->wupcnt = p_tcb->wupque ? 1U : 0U;
-
-		/*
-		 *  タスク終了要求状態の取出し［NGKI3467］
-		 */
-		pk_rtsk->raster = p_tcb->raster;
-
-		/*
-		 *  タスク終了禁止状態の取出し［NGKI3468］
-		 */
-		pk_rtsk->dister = !(p_tcb->enater);
+		pk_rtsk->actcnt = p_tcb->actque ? 1U : 0U;
+		ercd = E_OK;
 	}
-
-	/*
-	 *  起動要求キューイング数の取出し［NGKI1238］
-	 */
-	pk_rtsk->actcnt = p_tcb->actque ? 1U : 0U;
-	ercd = E_OK;
 	unlock_cpu();
 
   error_exit:

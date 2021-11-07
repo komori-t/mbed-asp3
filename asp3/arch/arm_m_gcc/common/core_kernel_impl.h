@@ -117,6 +117,13 @@ typedef struct task_initialization_context_block {
 	uint32_t    *stk_bottom; /* スタック領域の先頭番地 */
 } TSKINICTXB;
 
+#define init_tskinictxb(ptskinictxb, stksz, stk) ({ \
+	(ptskinictxb)->stk_top = (uint32_t *)(stk); \
+	(ptskinictxb)->stk_bottom = (uint32_t *)((char *)(stk) + (stksz)); \
+	})
+
+#define term_tskinictxb(ptskinictxb)
+
 #endif /* TOPPERS_MACRO_ONLY */
 
 #ifndef TOPPERS_MACRO_ONLY

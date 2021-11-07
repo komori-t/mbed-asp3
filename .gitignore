@@ -6,7 +6,8 @@
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -229,4 +230,4 @@ cython_debug/
 
 !asp3/target/
 cmake_build/
-mbed-os/
+mbed/mbed-os/

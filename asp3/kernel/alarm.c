@@ -37,7 +37,7 @@
  *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
  *  の責任を負わない．
  * 
- *  $Id: alarm.c 1019 2018-10-24 02:51:36Z ertl-hiro $
+ *  $Id: alarm.c 1021 2018-10-26 05:47:40Z ertl-hiro $
  */
 
 /*
@@ -58,6 +58,22 @@
 #ifndef LOG_ALM_LEAVE
 #define LOG_ALM_LEAVE(p_almcb)
 #endif /* LOG_ALM_LEAVE */
+
+#ifndef LOG_ACRE_ALM_ENTER
+#define LOG_ACRE_ALM_ENTER(pk_calm)
+#endif /* LOG_ACRE_ALM_ENTER */
+
+#ifndef LOG_ACRE_ALM_LEAVE
+#define LOG_ACRE_ALM_LEAVE(ercd)
+#endif /* LOG_ACRE_ALM_LEAVE */
+
+#ifndef LOG_DEL_ALM_ENTER
+#define LOG_DEL_ALM_ENTER(almid)
+#endif /* LOG_DEL_ALM_ENTER */
+
+#ifndef LOG_DEL_ALM_LEAVE
+#define LOG_DEL_ALM_LEAVE(ercd)
+#endif /* LOG_DEL_ALM_LEAVE */
 
 #ifndef LOG_STA_ALM_ENTER
 #define LOG_STA_ALM_ENTER(almid, almtim)
@@ -87,6 +103,7 @@
  *  アラーム通知の数
  */
 #define tnum_alm	((uint_t)(tmax_almid - TMIN_ALMID + 1))
+#define tnum_salm	((uint_t)(tmax_salmid - TMIN_ALMID + 1))
 
 /*
  *  アラーム通知IDからアラーム通知管理ブロックを取り出すためのマクロ
@@ -94,27 +111,146 @@
 #define INDEX_ALM(almid)	((uint_t)((almid) - TMIN_ALMID))
 #define get_almcb(almid)	(&(almcb_table[INDEX_ALM(almid)]))
 
+#ifdef TOPPERS_almini
+
+/*
+ *  使用していないアラーム通知管理ブロックのリスト
+ *
+ *  アラーム通知管理ブロックの先頭にはキューにつなぐための領域がないた
+ *  め，タイムイベントブロック（tmevtb）の領域を用いる．
+ */
+QUEUE	free_almcb;
+
 /*
  *  アラーム通知機能の初期化
  */
-#ifdef TOPPERS_almini
-
 void
 initialize_alarm(void)
 {
-	uint_t	i;
+	uint_t	i, j;
 	ALMCB	*p_almcb;
+	ALMINIB	*p_alminib;
 
-	for (i = 0; i < tnum_alm; i++) {
+	for (i = 0; i < tnum_salm; i++) {
 		p_almcb = &(almcb_table[i]);
 		p_almcb->p_alminib = &(alminib_table[i]);
 		p_almcb->almsta = false;
 		p_almcb->tmevtb.callback = (CBACK) call_alarm;
 		p_almcb->tmevtb.arg = (void *) p_almcb;
 	}
+	queue_initialize(&free_almcb);
+	for (j = 0; i < tnum_alm; i++, j++) {
+		p_almcb = &(almcb_table[i]);
+		p_alminib = &(aalminib_table[j]);
+		p_alminib->almatr = TA_NOEXS;
+		p_almcb->p_alminib = ((const ALMINIB *) p_alminib);
+		p_almcb->tmevtb.callback = (CBACK) call_alarm;
+		p_almcb->tmevtb.arg = (void *) p_almcb;
+		queue_insert_prev(&free_almcb, ((QUEUE *) &(p_almcb->tmevtb)));
+	}
 }
 
 #endif /* TOPPERS_almini */
+
+/*
+ *  アラーム通知の生成
+ */
+#ifdef TOPPERS_acre_alm
+
+ER_UINT
+acre_alm(const T_CALM *pk_calm)
+{
+	ALMCB		*p_almcb;
+	ALMINIB		*p_alminib;
+	ATR			almatr;
+	T_NFYINFO	*p_nfyinfo;
+	ER			ercd;
+
+	LOG_ACRE_ALM_ENTER(pk_calm);
+	CHECK_TSKCTX_UNL();
+
+	almatr = pk_calm->almatr;
+
+	CHECK_VALIDATR(almatr, TA_NULL);
+	ercd = check_nfyinfo(&(pk_calm->nfyinfo));
+	if (ercd != E_OK) {
+		goto error_exit;
+	}
+
+	lock_cpu();
+	if (tnum_alm == 0 || queue_empty(&free_almcb)) {
+		ercd = E_NOID;
+	}
+	else {
+		p_almcb = ((ALMCB *)(((char *) queue_delete_next(&free_almcb))
+												- offsetof(ALMCB, tmevtb)));
+		p_alminib = (ALMINIB *)(p_almcb->p_alminib);
+		p_alminib->almatr = almatr;
+		if (pk_calm->nfyinfo.nfymode == TNFY_HANDLER) {
+			p_alminib->exinf = pk_calm->nfyinfo.nfy.handler.exinf;
+			p_alminib->nfyhdr = (NFYHDR)(pk_calm->nfyinfo.nfy.handler.tmehdr);
+		}
+		else {
+			p_nfyinfo = &aalm_nfyinfo_table[p_alminib - aalminib_table];
+			*p_nfyinfo = pk_calm->nfyinfo;
+			p_alminib->exinf = (intptr_t) p_nfyinfo;
+			p_alminib->nfyhdr = notify_handler;
+		}
+		p_almcb->almsta = false;
+		ercd = ALMID(p_almcb);
+	}
+	unlock_cpu();
+
+  error_exit:
+	LOG_ACRE_ALM_LEAVE(ercd);
+	return(ercd);
+}
+
+#endif /* TOPPERS_acre_alm */
+
+/*
+ *  アラーム通知の削除
+ */
+#ifdef TOPPERS_del_alm
+
+ER
+del_alm(ID almid)
+{
+	ALMCB	*p_almcb;
+	ALMINIB	*p_alminib;
+	ER		ercd;
+
+	LOG_DEL_ALM_ENTER(almid);
+	CHECK_TSKCTX_UNL();
+	CHECK_ID(VALID_ALMID(almid));
+	p_almcb = get_almcb(almid);
+
+	lock_cpu();
+	if (p_almcb->p_alminib->almatr == TA_NOEXS) {
+		ercd = E_NOEXS;
+	}
+	else if (almid <= tmax_salmid) {
+		ercd = E_OBJ;
+	}
+	else {
+		if (p_almcb->almsta) {
+			p_almcb->almsta = false;
+			tmevtb_dequeue(&(p_almcb->tmevtb));
+		}
+
+		p_alminib = (ALMINIB *)(p_almcb->p_alminib);
+		p_alminib->almatr = TA_NOEXS;
+		queue_insert_prev(&free_almcb, ((QUEUE *) &(p_almcb->tmevtb)));
+		ercd = E_OK;
+	}
+	unlock_cpu();
+
+  error_exit:
+	LOG_DEL_ALM_LEAVE(ercd);
+	return(ercd);
+}
+
+#endif /* TOPPERS_del_alm */
 
 /*
  *  アラーム通知の動作開始
@@ -134,14 +270,19 @@ sta_alm(ID almid, RELTIM almtim)
 	p_almcb = get_almcb(almid);
 
 	lock_cpu();
-	if (p_almcb->almsta) {
-		tmevtb_dequeue(&(p_almcb->tmevtb));
+	if (p_almcb->p_alminib->almatr == TA_NOEXS) {
+		ercd = E_NOEXS;
 	}
 	else {
-		p_almcb->almsta = true;
+		if (p_almcb->almsta) {
+			tmevtb_dequeue(&(p_almcb->tmevtb));
+		}
+		else {
+			p_almcb->almsta = true;
+		}
+		tmevtb_enqueue_reltim(&(p_almcb->tmevtb), almtim);
+		ercd = E_OK;
 	}
-	tmevtb_enqueue_reltim(&(p_almcb->tmevtb), almtim);
-	ercd = E_OK;
 	unlock_cpu();
 
   error_exit:
@@ -168,11 +309,16 @@ stp_alm(ID almid)
 	p_almcb = get_almcb(almid);
 
 	lock_cpu();
-	if (p_almcb->almsta) {
-		p_almcb->almsta = false;
-		tmevtb_dequeue(&(p_almcb->tmevtb));
+	if (p_almcb->p_alminib->almatr == TA_NOEXS) {
+		ercd = E_NOEXS;
 	}
-	ercd = E_OK;
+	else {
+		if (p_almcb->almsta) {
+			p_almcb->almsta = false;
+			tmevtb_dequeue(&(p_almcb->tmevtb));
+		}
+		ercd = E_OK;
+	}
 	unlock_cpu();
 
   error_exit:
@@ -199,14 +345,19 @@ ref_alm(ID almid, T_RALM *pk_ralm)
 	p_almcb = get_almcb(almid);
 
 	lock_cpu();
-	if (p_almcb->almsta) {
-		pk_ralm->almstat = TALM_STA;
-		pk_ralm->lefttim = tmevt_lefttim(&(p_almcb->tmevtb));
+	if (p_almcb->p_alminib->almatr == TA_NOEXS) {
+		ercd = E_NOEXS;
 	}
 	else {
-		pk_ralm->almstat = TALM_STP;
+		if (p_almcb->almsta) {
+			pk_ralm->almstat = TALM_STA;
+			pk_ralm->lefttim = tmevt_lefttim(&(p_almcb->tmevtb));
+		}
+		else {
+			pk_ralm->almstat = TALM_STP;
+		}
+		ercd = E_OK;
 	}
-	ercd = E_OK;
 	unlock_cpu();
 
   error_exit:
@@ -231,6 +382,9 @@ call_alarm(ALMCB *p_almcb)
 
 	/*
 	 *  通知ハンドラを，CPUロック解除状態で呼び出す．
+	 *
+	 *  アラーム通知の生成／削除はタスクからしか行えないため，アラーム
+	 *  通知初期化ブロックをCPUロック解除状態で参照しても問題ない．
 	 */
 	unlock_cpu();
 

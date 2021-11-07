@@ -37,7 +37,7 @@
  *  アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
  *  の責任を負わない．
  * 
- *  $Id: task_term.c 822 2017-08-31 09:13:25Z ertl-hiro $
+ *  $Id: task_term.c 825 2017-09-01 13:17:37Z ertl-hiro $
  */
 
 /*
@@ -172,7 +172,10 @@ ras_ter(ID tskid)
 	CHECK_ILUSE(p_tcb != p_runtsk);				/*［NGKI3475］*/
 
 	lock_cpu();
-	if (TSTAT_DORMANT(p_tcb->tstat)) {
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI3473］*/
+	}
+	else if (TSTAT_DORMANT(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI3476］*/
 	}
 	else if (p_tcb->enater) {
@@ -306,7 +309,10 @@ ter_tsk(ID tskid)
 	CHECK_ILUSE(p_tcb != p_runtsk);				/*［NGKI1176］*/
 
 	lock_cpu();
-	if (TSTAT_DORMANT(p_tcb->tstat)) {
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1174］*/
+	}
+	else if (TSTAT_DORMANT(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI1177］*/
 	}
 	else {

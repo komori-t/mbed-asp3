@@ -217,7 +217,10 @@ wup_tsk(ID tskid)
 	}
 
 	lock_cpu();
-	if (TSTAT_DORMANT(p_tcb->tstat)) {
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1268］*/
+	}
+	else if (TSTAT_DORMANT(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI1270］*/
 	}
 	else if (TSTAT_WAIT_SLP(p_tcb->tstat)) {
@@ -270,7 +273,10 @@ can_wup(ID tskid)
 	}
 
 	lock_cpu();
-	if (TSTAT_DORMANT(p_tcb->tstat)) {
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1281］*/
+	}
+	else if (TSTAT_DORMANT(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI1283］*/
 	}
 	else {
@@ -303,7 +309,10 @@ rel_wai(ID tskid)
 	p_tcb = get_tcb(tskid);
 
 	lock_cpu();
-	if (!TSTAT_WAITING(p_tcb->tstat)) {
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1293］*/
+	}
+	else if (!TSTAT_WAITING(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI1295］*/
 	}
 	else {
@@ -354,6 +363,9 @@ sus_tsk(ID tskid)
 	lock_cpu();
 	if (p_tcb == p_runtsk && !dspflg) {			/*［NGKI1311］［NGKI3604］*/
 		ercd = E_CTX;
+	}
+	else if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1303］*/
 	}
 	else if (TSTAT_DORMANT(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI1305］*/
@@ -410,7 +422,10 @@ rsm_tsk(ID tskid)
 	p_tcb = get_tcb(tskid);
 
 	lock_cpu();
-	if (!TSTAT_SUSPENDED(p_tcb->tstat)) {
+	if (p_tcb->p_tinib->tskatr == TA_NOEXS) {
+		ercd = E_NOEXS;							/*［NGKI1317］*/
+	}
+	else if (!TSTAT_SUSPENDED(p_tcb->tstat)) {
 		ercd = E_OBJ;							/*［NGKI1319］*/
 	}
 	else {
