@@ -230,3 +230,4 @@ cython_debug/
 
 !asp3/target/
 cmake_build/
+!mbed-os.lib
